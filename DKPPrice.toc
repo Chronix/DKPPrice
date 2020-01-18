@@ -1,0 +1,7 @@
+## Interface: 11303
+## Title: DKP Prices
+## Author: Dorka	
+## Version: 1.0
+
+main.lua
+prices.lua
