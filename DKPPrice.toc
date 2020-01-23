@@ -2,6 +2,7 @@
 ## Title: DKP Prices
 ## Author: Dorka	
 ## Version: 1.0
+## SavedVariablesPerCharacter: DKPPrices
 
+iteminfo.lua
 main.lua
-prices.lua
