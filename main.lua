@@ -2,9 +2,12 @@ SLASH_PRICE1 = "/price"
 
 local ItemInfo, NS = ...
 
-DKPPrices = {}
+-- have no idea, how to work with classess from separated files
 
+DKPPrices = {}
+DKPMain = {}
 ItemInfo = {}
+
 function ItemInfo:new(itemId, itemName, itemLink)
 	local item = {}
 
@@ -21,29 +24,91 @@ function ItemInfo:new(itemId, itemName, itemLink)
 	return item
 end
 
+function ItemInfo:SayMinBid(item)
+	local strout = string.format( "%s minBid: %d", item.link, item.minValue)
+	print(strout)
+	--SendChatMessage(strout, "SAY",nil,nil)
+end
+
 SlashCmdList["PRICE"] = function(lnk)
 	if lnk then
 		
-		local itemString = string.match(lnk, "item[%-?%d:]+")
-		local _, id = strsplit(":", itemString)
-
-		local price = DKPPrices[id]
-		if price then 
-			print("Min bid for " .. lnk .. ": " .. price)
-		else 			
-			local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
-			print(string.format("itemId: %s | itemName: %s | itemLink: %s", id, itemName, itemLink))
-			local iInfo = ItemInfo:new(id, itemName, itemLink)
-			DKPPrices[id] = iInfo
+		local isEnabling = DKPMain:TryToMatchEnableDisable(lnk)
+		if isEnabling then
+			DKPMain:WriteEnableState()
+			return
 		end
+
+		local id = DKPMain:TryToMatchItem(lnk)
+		if id then
+			local item = DKPPrices[id]
+			if item then 
+				ItemInfo:SayMinBid(item)
+			else 			
+				local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
+				print(string.format("itemId: %s | itemName: %s | itemLink: %s", id, itemName, itemLink))
+				local iInfo = ItemInfo:new(id, itemName, itemLink)
+				DKPPrices[id] = iInfo
+			end	
+		end
+
 	else
 		print("Wrong item link specified")
 	end
 end
 
+function DKPMain:TryToMatchItem(text)
+	local itemString = string.match(text, "item[%-?%d:]+")
+	if itemString then
+		local _, id = strsplit(":", itemString)
+		if id then
+			return id
+		end		
+	end
+
+	return nil
+end
+
+-- ## Try to Match Enable/Disable text
+function DKPMain:TryToMatchEnableDisable(text)
+	local isMatch = string.match(text, "enable")
+	if isMatch then
+		DKPPrices["enable"] = 1
+		return 1			
+	end
+	local isMatch = string.match(text, "disable")
+	if isMatch then
+		DKPPrices["enable"] = 0
+		return 1
+	end
+	return nil
+end
+
+-- ## Write state to console log
+function DKPMain:WriteEnableState()
+	local state = DKPMain:GetEnableState()
+	local stateStr = string.format("DKP Prices: enable = %d", state)
+	print(stateStr)
+end
+
+-- ## Return enabled state
+function DKPMain:GetEnableState()
+	local state = DKPPrices["enable"]
+	if state then
+		return state
+	end
+
+	return 1;
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("LOOT_OPENED")
 frame:SetScript("OnEvent", function(self, event, arg1)
+	local isEnabled = DKPMain:GetEnableState()
+	if isEnabled==0 then
+		return
+	end	
+	
 	print("Minimal DKP values: ")
 	
 	for i=1,GetNumLootItems() do
