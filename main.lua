@@ -3,7 +3,7 @@ SLASH_PRICE1 = "/price"
 local ItemInfo, NS = ...
 
 -- have no idea, how to work with classess from separated files
-
+StringExtension = {}
 DKPPrices = {}
 DKPMain = {}
 ItemInfo = {}
@@ -31,6 +31,10 @@ function ItemInfo:SayMinBid(item)
 end
 
 SlashCmdList["PRICE"] = function(lnk)
+	lnk = StringExtension:trim(lnk)
+	if lnk=="" then
+		return
+	end
 	if lnk then
 		
 		local isEnabling = DKPMain:TryToMatchEnableDisable(lnk)
@@ -39,6 +43,15 @@ SlashCmdList["PRICE"] = function(lnk)
 			return
 		end
 
+		local split = DKPMain:TrySplitItems(lnk)
+		if split then
+			for key in pairs(split) do
+				local s = string.format("split: %s %s", item, split[key])
+				print(s)			
+			end
+			return
+		else
+		end
 		local id = DKPMain:TryToMatchItem(lnk)
 		if id then
 			local item = DKPPrices[id]
@@ -55,6 +68,11 @@ SlashCmdList["PRICE"] = function(lnk)
 	else
 		print("Wrong item link specified")
 	end
+end
+
+function DKPMain:TrySplitItems(text)
+	local t = StringExtension:split(text, ",")	
+	return t
 end
 
 function DKPMain:TryToMatchItem(text)
@@ -138,3 +156,21 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 	end
 
 end)
+
+function StringExtension:split (inputstr, sep)
+	if sep == nil then
+			sep = "%s"
+	end
+	local count=0
+	local t={}
+	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+			table.insert(t, str)
+			count=count+1			
+	end
+	t["count"]=count
+	return t
+end
+
+function StringExtension:trim (s)	
+	return s:match "^%s*(.-)%s*$"	
+end
