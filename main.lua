@@ -84,16 +84,16 @@ function DKPMain:AddOrWriteItem(lnk, minBid)
 	if lnk=="" then
 		return
 	end
-	local id = DKPMain:TryToMatchItem(lnk)
+	local id = DKPMain:GetItemId(lnk)
 	if id then
 		local item = DKPPrices[id]
 		if item then 			
 			if minBid~=0 then
 				ItemInfo:setMinBid(item, minBid)
+				DKPPrices[id] = item
 			end
 
-			ItemInfo:SayMinBid(item)
-			DKPPrices[id] = item
+			ItemInfo:SayMinBid(item)			
 		else 						
 			local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
 			if debug==1 then
@@ -114,7 +114,7 @@ function DKPMain:TrySplitItems(text)
 	return t
 end
 
-function DKPMain:TryToMatchItem(text)
+function DKPMain:GetItemId(text)
 	local itemString = string.match(text, "item[%-?%d:]+")
 	if itemString then
 		local _, id = strsplit(":", itemString)
@@ -173,29 +173,17 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		if debug==1 then
 			print(i)
 		end
-		--if LootSlotHasItem(i) then
 
-			local lootIcon, lootName, lootQuantity, currencyID, lootQuality, locked, isQuestItem, questID, isActive = GetLootSlotInfo(i)			
-			local hasItem = LootSlotHasItem(i)
+		local lootIcon, lootName, lootQuantity, currencyID, lootQuality, locked, isQuestItem, questID, isActive = GetLootSlotInfo(i)			
+		local hasItem = LootSlotHasItem(i)			
+		if hasItem then
+			local itemLink = GetLootSlotLink(i)
 			
-			if hasItem then
-				local itemLink = GetLootSlotLink(i)
-				
-				if itemLink then
-					local linkstext = ""
-					linkstext=linkstext .. itemLink
-					--SendChatMessage(linkstext, "SAY", nil, nil)
-					local itemIdstr = string.match(linkstext, "item[%-?%d:]+")
-					--SendChatMessage(itemIdstr, "SAY", nil, nil)
-
-					local _, id = strsplit(":", itemIdstr)
-					--SendChatMessage(id, "SAY", nil,nil)
-				end
+			if itemLink then
+				DKPMain:AddOrWriteItem(itemLink, 0)
 			end
-			
-		--end if
+		end			
 	end
-
 end)
 
 function ItemInfo:new(itemId, itemName, itemLink)
@@ -206,17 +194,14 @@ function ItemInfo:new(itemId, itemName, itemLink)
 	item.link = itemLink
 	item.minValue = 0
 
-	function item:sayMinBid()
-		local strout = string.format( "%s minBid: %d", item.link, item.minValue)
-		SendChatMessage(strout, "SAY",nil,nil)
-	end    
 	return item
 end
 
 function ItemInfo:SayMinBid(item)
 	local strout = string.format( "%s minBid: %d", item.link, item.minValue)
-	print(strout)
-	--SendChatMessage(strout, "SAY",nil,nil)
+	if DKPPrices["enabled"]==1 then
+		SendChatMessage(strout, "RAID",nil,nil)
+	end
 end
 
 function ItemInfo:setMinBid(item, value)
