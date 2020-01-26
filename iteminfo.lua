@@ -1,18 +1,22 @@
-local ItemInfo = {}
-
-
+ItemInfo = {}
 function ItemInfo:new(itemId, itemName, itemLink)
-    local item = {}
+	local item = {}
 
-    item.id = itemId
-    item.name = itemName
-    item.link = itemLink
-    item.minValue = 0
+	item.id = itemId
+	item.name = itemName
+	item.link = itemLink
+	item.minValue = 0
 
-    function item:sayMinBid()
-        local strout = string.format( "%s minBid: %d", item.link, item.minValue)
-        SendChatMessage(strout, "SAY",nil,nil)
-    end    
+	function item:sayMinBid()
+		local strout = string.format( "%s minBid: %d", item.link, item.minValue)
+		SendChatMessage(strout, "SAY",nil,nil)
+	end    
 
-    return item
+	return item
+end
+
+function ItemInfo:SayMinBid(item)
+	local strout = string.format( "%s minBid: %d", item.link, item.minValue)
+	print(strout)
+	--SendChatMessage(strout, "SAY",nil,nil)
 end

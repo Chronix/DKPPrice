@@ -1,36 +1,18 @@
 SLASH_PRICE1 = "/price"
 
-local ItemInfo, NS = ...
+local ItemInfo, StringExtension, NS = ...
 
 -- have no idea, how to work with classess from separated files
-StringExtension = {}
 DKPPrices = {}
 DKPMain = {}
+StringExtension = {}
 ItemInfo = {}
 
-function ItemInfo:new(itemId, itemName, itemLink)
-	local item = {}
-
-	item.id = itemId
-	item.name = itemName
-	item.link = itemLink
-	item.minValue = 0
-
-	function item:sayMinBid()
-		local strout = string.format( "%s minBid: %d", item.link, item.minValue)
-		SendChatMessage(strout, "SAY",nil,nil)
-	end    
-
-	return item
-end
-
-function ItemInfo:SayMinBid(item)
-	local strout = string.format( "%s minBid: %d", item.link, item.minValue)
-	print(strout)
-	--SendChatMessage(strout, "SAY",nil,nil)
-end
+DKPMain["debug"]=0
+debug = DKPMain["debug"]
 
 SlashCmdList["PRICE"] = function(lnk)
+	print("DKP price")
 	lnk = StringExtension:trim(lnk)
 	if lnk=="" then
 		return
@@ -46,28 +28,85 @@ SlashCmdList["PRICE"] = function(lnk)
 		local split = DKPMain:TrySplitItems(lnk)
 		if split then
 			for key in pairs(split) do
-				local s = string.format("split: %s %s", item, split[key])
-				print(s)			
+				if debug==1 then
+					print("key "..key)
+				end
+				if key~="count" then
+					if debug==1 then
+						local s = string.format("split: %s %s", key, split[key])
+						print(s)			
+					end
+					DKPMain:TryAddItem(split[key])
+				end
 			end
 			return
-		else
+		else			
+			DKPMain:TryAddItem(lnk)
 		end
-		local id = DKPMain:TryToMatchItem(lnk)
-		if id then
-			local item = DKPPrices[id]
-			if item then 
-				ItemInfo:SayMinBid(item)
-			else 			
-				local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
-				print(string.format("itemId: %s | itemName: %s | itemLink: %s", id, itemName, itemLink))
-				local iInfo = ItemInfo:new(id, itemName, itemLink)
-				DKPPrices[id] = iInfo
-			end	
-		end
-
+		
 	else
 		print("Wrong item link specified")
 	end
+end
+
+function DKPMain:TryAddItem(text)
+	if debug==1 then
+		print("DKPMain:TryAddItem()"..text)
+	end
+	
+	local trimmed = StringExtension:trim(text)
+	local splitItem = StringExtension:splitItemDkp(trimmed)
+	
+	if splitItem then
+		if debug==1 then
+			print("s-item: "..splitItem["item"])
+			print("s-dkp: "..splitItem["dkp"])
+		end
+
+		if splitItem["item"] and splitItem["dkp"] then
+			DKPMain:AddOrWriteItem(splitItem["item"], splitItem["dkp"])
+		else
+			print("DKPPrice failed")
+		end
+	else
+		if debug==1 then
+			print("is-split-2 "..text)
+		end
+		DKPMain:AddOrWriteItem(text, 0)
+	end
+end
+
+function DKPMain:AddOrWriteItem(lnk, minBid)
+	if debug==1 then
+		print("DKPMain:AddOrWriteItem "..lnk.." minBid "..minBid)
+	end
+
+	if lnk=="" then
+		return
+	end
+	local id = DKPMain:TryToMatchItem(lnk)
+	if id then
+		local item = DKPPrices[id]
+		if item then 			
+			if minBid~=0 then
+				ItemInfo:setMinBid(item, minBid)
+			end
+
+			ItemInfo:SayMinBid(item)
+			DKPPrices[id] = item
+		else 						
+			local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
+			if debug==1 then
+				print(string.format("itemId: %s | itemName: %s | itemLink: %s", id, itemName, itemLink))
+			end
+			local iInfo = ItemInfo:new(id, itemName, itemLink)
+			if minBid and minBid ~= 0 then
+				ItemInfo:setMinBid(iInfo, minBid)
+			end
+			DKPPrices[id] = iInfo
+			ItemInfo:SayMinBid(iInfo)
+		end
+	end	
 end
 
 function DKPMain:TrySplitItems(text)
@@ -90,7 +129,7 @@ end
 -- ## Try to Match Enable/Disable text
 function DKPMain:TryToMatchEnableDisable(text)
 	local isMatch = string.match(text, "enable")
-	if isMatch then
+		if isMatch then
 		DKPPrices["enable"] = 1
 		return 1			
 	end
@@ -131,7 +170,9 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 	
 	for i=1,GetNumLootItems() do
 
-		print(i)
+		if debug==1 then
+			print(i)
+		end
 		--if LootSlotHasItem(i) then
 
 			local lootIcon, lootName, lootQuantity, currencyID, lootQuality, locked, isQuestItem, questID, isActive = GetLootSlotInfo(i)			
@@ -157,6 +198,32 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
 end)
 
+function ItemInfo:new(itemId, itemName, itemLink)
+	local item = {}
+
+	item.id = itemId
+	item.name = itemName
+	item.link = itemLink
+	item.minValue = 0
+
+	function item:sayMinBid()
+		local strout = string.format( "%s minBid: %d", item.link, item.minValue)
+		SendChatMessage(strout, "SAY",nil,nil)
+	end    
+	return item
+end
+
+function ItemInfo:SayMinBid(item)
+	local strout = string.format( "%s minBid: %d", item.link, item.minValue)
+	print(strout)
+	--SendChatMessage(strout, "SAY",nil,nil)
+end
+
+function ItemInfo:setMinBid(item, value)
+	item.minValue = value
+end
+
+
 function StringExtension:split (inputstr, sep)
 	if sep == nil then
 			sep = "%s"
@@ -165,12 +232,42 @@ function StringExtension:split (inputstr, sep)
 	local t={}
 	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
 			table.insert(t, str)
-			count=count+1			
+			count=count+1
+			
+			if debug==1 then
+				print("table "..count.."-"..str)
+			end
 	end
 	t["count"]=count
 	return t
 end
 
 function StringExtension:trim (s)	
-	return s:match "^%s*(.-)%s*$"	
+	return string.match(s,"^%s*(.-)%s*$")
+end
+
+function StringExtension:splitItemDkp(text)	
+	local index = string.find(text, "|h|r")
+	if debug==1 then
+		print ("splitItemDKP: "..index)
+	end
+	
+	if index then
+		local strint = string.sub(text, index+5)
+		if strint==nil or strint=="" then
+			return nil
+		end
+		split = {}
+		split["dkp"] = tonumber(strint)
+		split["item"] = string.sub(text, 1, index+4) 
+
+		if debug==1 then
+			print("dkp: "..split["dkp"])
+			print("item: "..split["item"])
+		end
+
+		return split
+	else
+		return nil
+	end
 end
