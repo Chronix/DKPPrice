@@ -8,7 +8,7 @@ DKPMain = {}
 StringExtension = {}
 ItemInfo = {}
 
-DKPMain["debug"]=0
+DKPMain["debug"]=1
 debug = DKPMain["debug"]
 
 SlashCmdList["PRICE"] = function(lnk)
@@ -84,7 +84,8 @@ function DKPMain:AddOrWriteItem(lnk, minBid)
 	if lnk=="" then
 		return
 	end
-	local id = DKPMain:GetItemId(lnk)
+	local id = DKPMain:GetItemId(lnk)	
+	local minBidRst = 0
 	if id then
 		local item = DKPPrices[id]
 		if item then 			
@@ -93,7 +94,7 @@ function DKPMain:AddOrWriteItem(lnk, minBid)
 				DKPPrices[id] = item
 			end
 
-			ItemInfo:SayMinBid(item)			
+			minBidRst = ItemInfo:SayMinBid(item)						
 		else 						
 			local itemName, itemLink, itemRarity, itemLvl, itemMinLvl, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
 			if debug==1 then
@@ -104,9 +105,10 @@ function DKPMain:AddOrWriteItem(lnk, minBid)
 				ItemInfo:setMinBid(iInfo, minBid)
 			end
 			DKPPrices[id] = iInfo
-			ItemInfo:SayMinBid(iInfo)
+			minBidRst = ItemInfo:SayMinBid(iInfo)
 		end
-	end	
+		return minBidRst
+	end
 end
 
 function DKPMain:TrySplitItems(text)
@@ -186,6 +188,42 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 	end
 end)
 
+local frame2 = CreateFrame("Frame")
+frame2:RegisterEvent("CHAT_MSG_WHISPER")
+frame2:SetScript("OnEvent", function(self, event, arg1, arg2, arg3, arg6, arg7, arg8, arg11, arg12)
+	
+	local message = arg1
+	local author = arg2					
+
+	local isEnabled = DKPMain:GetEnableState()
+	if isEnabled==0 then
+		return
+	end	
+	
+	if debug==1 then
+		print("Whisp-min DKP values: ")	
+	end
+	
+	local command = string.sub(message, 1, 4)
+	local itemLink = string.sub(message, 5)
+
+	if command=="!min" then
+		if itemLink and itemLink~="" then
+			local minbid = DKPMain:AddOrWriteItem(itemLink, 0)
+			print(minbid)
+			local msg=itemLink.." minBid: "..tostring(minbid)
+			SendChatMessage(msg, "WHISPER", nil, author)
+		end	
+	end
+
+	if debug==1 then
+		print("itemLink: "..itemLink)
+		print("author: "..author)
+		print("senderGUID: "..senderGUID)
+	end
+	
+end)
+
 function ItemInfo:new(itemId, itemName, itemLink)
 	local item = {}
 
@@ -202,6 +240,7 @@ function ItemInfo:SayMinBid(item)
 	if DKPPrices["enabled"]==1 then
 		SendChatMessage(strout, "RAID",nil,nil)
 	end
+	return item.minValue
 end
 
 function ItemInfo:setMinBid(item, value)
